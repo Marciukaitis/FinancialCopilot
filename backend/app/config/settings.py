@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
     DOCUMENTS_DIRECTORY: str = "./data/documents"
 
+    CHUNK_SIZE: int = 1000
+    CHUNK_OVERLAP: int = 200
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
