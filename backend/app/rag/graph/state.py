@@ -50,6 +50,7 @@ class RAGResult:
     context: str
     thread_id: str
     sources: List[Dict[str, Any]] = field(default_factory=list)
+    retrieved_chunks: List[Dict[str, Any]] = field(default_factory=list)
     chunks_used: int = 0
     cleaned_query: str = ""
     search_query: str = ""

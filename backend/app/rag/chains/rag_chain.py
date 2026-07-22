@@ -1,5 +1,6 @@
 """Construcción de contexto y generación de respuestas con Ollama."""
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from langchain_core.documents import Document
@@ -60,7 +61,7 @@ class RAGChain:
 
         sections: List[str] = []
         for chunk in chunks:
-            document = chunk.source
+            document = self.normalize_document_name(chunk.source)
             page = self.normalize_page(chunk.metadata.get("page"))
             page_label = str(page) if page is not None else "desconocida"
             header = (
@@ -86,13 +87,23 @@ class RAGChain:
 
         return "\n".join(lines) if lines else "(Sin historial previo)"
 
+    @staticmethod
+    def normalize_document_name(name: str) -> str:
+        """Quita prefijos UUID de re-uploads: '{hex32}_archivo.pdf' → 'archivo.pdf'."""
+        raw = Path(str(name or "")).name
+        if len(raw) > 33 and raw[32] == "_" and all(
+            ch in "0123456789abcdef" for ch in raw[:32].lower()
+        ):
+            return raw[33:]
+        return raw
+
     def extract_sources(self, chunks: List[RetrievedChunk]) -> List[Dict[str, Any]]:
-        """Lista de fuentes únicas (documento + página)."""
+        """Una fuente por chunk recuperado, sin duplicar el mismo documento+página."""
         seen = set()
         sources: List[Dict[str, Any]] = []
 
         for chunk in chunks:
-            document = chunk.source
+            document = self.normalize_document_name(chunk.source)
             page = self.normalize_page(chunk.metadata.get("page"))
             key = (document, page)
             if key in seen:
@@ -110,7 +121,7 @@ class RAGChain:
         return sources
 
     def format_sources_section(self, sources: List[Dict[str, Any]]) -> str:
-        """Bloque de fuentes obligatorio para la respuesta final."""
+        """Bloque textual de fuentes (legacy / API sin UI)."""
         if not sources:
             return ""
 
@@ -123,20 +134,29 @@ class RAGChain:
 
         return "\n".join(lines)
 
+    def strip_sources_section(self, answer: str) -> str:
+        """Quita el bloque 'Fuentes:' del texto; la UI las muestra por separado."""
+        text = (answer or "").strip()
+        if not text:
+            return ""
+
+        markers = ("\n---\nFuentes:", "\nFuentes:", "\n**Fuentes:**")
+        lower = text.lower()
+        cut_at = None
+        for marker in markers:
+            idx = lower.find(marker.lower())
+            if idx != -1 and (cut_at is None or idx < cut_at):
+                cut_at = idx
+
+        if cut_at is not None:
+            text = text[:cut_at].rstrip()
+
+        return text
+
     def attach_sources(self, answer: str, sources: List[Dict[str, Any]]) -> str:
-        """Garantiza que la respuesta incluya documento y página."""
-        answer = (answer or "").strip()
-        if not sources:
-            return answer
-
-        if any(marker in answer.lower() for marker in INSUFFICIENT_INFO_MARKERS):
-            return answer
-
-        sources_section = self.format_sources_section(sources)
-        if "fuentes:" in answer.lower():
-            return answer
-
-        return f"{answer}{sources_section}"
+        """Limpia la respuesta: las fuentes van en el campo `sources` de la API."""
+        del sources  # Las fuentes estructuradas se exponen aparte en la respuesta HTTP.
+        return self.strip_sources_section(answer)
 
     def rewrite_followup_query(
         self,

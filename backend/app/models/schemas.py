@@ -75,6 +75,7 @@ class QueryResponse(BaseModel):
     query: str
     answer: str
     sources: List[SourceResponse]
+    retrieved_chunks: List[RetrievedChunkResponse] = []
     chunks_used: int
     thread_id: str
     cleaned_query: Optional[str] = None
@@ -82,3 +83,12 @@ class QueryResponse(BaseModel):
     is_valid: bool = True
     validation_notes: List[str] = []
     analysis: Dict[str, Any] = {}
+    pipeline_steps: List[str] = Field(
+        default_factory=lambda: [
+            "analyze_question",
+            "search_documents",
+            "retrieve_chunks",
+            "generate_answer",
+            "validate_answer",
+        ]
+    )

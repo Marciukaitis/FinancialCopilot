@@ -88,10 +88,7 @@ def test_analyze_question_rewrites_followup() -> None:
 
 def test_validate_answer_appends_conversation_history() -> None:
     chain = MagicMock()
-    chain.attach_sources.side_effect = lambda answer, sources: (
-        f"{answer}\n\n---\nFuentes:\n"
-        f"- Documento: {sources[0]['document']} | Página: {sources[0]['page']}"
-    )
+    chain.attach_sources.side_effect = lambda answer, sources: answer
     nodes = RAGNodes(retriever=MagicMock(), chain=chain)
 
     result = nodes.validate_answer(
@@ -107,6 +104,8 @@ def test_validate_answer_appends_conversation_history() -> None:
     assert len(result["conversation_history"]) == 2
     assert result["conversation_history"][0]["role"] == "user"
     assert result["conversation_history"][1]["role"] == "assistant"
+    assert "Fuentes:" not in result["answer"]
+    assert result["answer"] == "El monto máximo es 50000 USD."
 
 
 def test_rag_graph_memory_across_turns() -> None:
@@ -130,10 +129,7 @@ def test_rag_graph_memory_across_turns() -> None:
         "El monto máximo es 50000 USD.",
         "El plazo máximo es 36 meses.",
     ]
-    chain.attach_sources.side_effect = (
-        lambda answer, sources: f"{answer}\n\n---\nFuentes:\n"
-        f"- Documento: {sources[0]['document']} | Página: {sources[0]['page']}"
-    )
+    chain.attach_sources.side_effect = lambda answer, sources: answer
 
     graph = RAGGraph(
         retriever=retriever,

@@ -18,10 +18,7 @@ def mock_query_service(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     service = MagicMock(spec=QueryService)
     service.ask.return_value = RAGResult(
         query="¿Y cuál es el plazo?",
-        answer=(
-            "El plazo máximo es 36 meses.\n\n"
-            "---\nFuentes:\n- Documento: credito.pdf | Página: 5"
-        ),
+        answer="El plazo máximo es 36 meses.",
         context="contexto",
         thread_id="thread-123",
         sources=[
@@ -32,12 +29,21 @@ def mock_query_service(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
                 "score": 0.15,
             }
         ],
+        retrieved_chunks=[
+            {
+                "rank": 1,
+                "content": "El plazo máximo es 36 meses.",
+                "source": "credito.pdf",
+                "score": 0.93,
+                "metadata": {"page": 5},
+            }
+        ],
         chunks_used=1,
         cleaned_query="¿Y cuál es el plazo?",
         search_query="¿Cuál es el plazo máximo del crédito?",
         analysis={"intent": "financial_lookup", "is_followup": True},
         is_valid=True,
-        validation_notes=["Validación OK: respuesta con documento y página."],
+        validation_notes=["Validación OK: fuentes estructuradas disponibles para la UI."],
         conversation_history=[
             {"role": "user", "content": "¿Cuál es el monto máximo?"},
             {"role": "assistant", "content": "El monto máximo es 50000 USD."},

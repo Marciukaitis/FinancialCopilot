@@ -1,3 +1,13 @@
+:root {
+  --fc-ink: #2f3735;
+  --fc-teal: #6d8f88;
+  --fc-teal-deep: #55756f;
+  --fc-mint: #c9ddd7;
+  --fc-mist: #f3f2ef;
+  --fc-panel: rgba(251, 250, 248, 0.86);
+  --fc-line: rgba(109, 143, 136, 0.16);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -10,4 +20,56 @@ body,
 
 body {
   margin: 0;
+  color: var(--fc-ink);
+  background: #f3f2ef;
+}
+
+@keyframes fc-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fc-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fc-pulse-soft {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+.fc-fade-up {
+  animation: fc-fade-up 0.55s ease both;
+}
+
+.fc-fade-up-delay {
+  animation: fc-fade-up 0.65s ease 0.08s both;
+}
+
+.fc-message-in {
+  animation: fc-message-in 0.35s ease both;
+}
+
+.fc-brand-orb {
+  animation: fc-pulse-soft 3.2s ease-in-out infinite;
 }

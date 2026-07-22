@@ -59,3 +59,8 @@ export async function askQuestion(query, threadId) {
     }),
   });
 }
+
+export function getDocumentUrl(filename) {
+  const encoded = encodeURIComponent(filename);
+  return `${API_BASE_URL}/documents/${encoded}`;
+}

@@ -4,7 +4,6 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import InputBase from "@mui/material/InputBase";
-import Paper from "@mui/material/Paper";
 import Tooltip from "@mui/material/Tooltip";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
@@ -35,30 +34,38 @@ function ChatInput({ onSend, onClear, disabled }) {
         py: 2,
         borderTop: "1px solid",
         borderColor: "divider",
-        bgcolor: "background.paper",
+        background: "rgba(255,255,255,0.72)",
       }}
     >
-      <Paper
-        variant="outlined"
+      <Box
         sx={{
           display: "flex",
           alignItems: "flex-end",
           gap: 1,
           px: 1.5,
           py: 1,
-          borderColor: "divider",
+          borderRadius: 3,
+          border: "1px solid",
+          borderColor: "rgba(15,118,110,0.18)",
+          bgcolor: "#fff",
+          boxShadow: "0 8px 24px rgba(11,31,28,0.06)",
+          transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+          "&:focus-within": {
+            borderColor: "primary.main",
+            boxShadow: "0 10px 28px rgba(15,118,110,0.14)",
+          },
         }}
       >
         <InputBase
           fullWidth
           multiline
           maxRows={4}
-          placeholder="Escribí tu pregunta…"
+          placeholder="Preguntá sobre montos, plazos, políticas…"
           value={value}
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={handleKeyDown}
           disabled={disabled}
-          sx={{ py: 0.75 }}
+          sx={{ py: 0.9, px: 0.5 }}
         />
 
         <Tooltip title="Nueva conversación">
@@ -74,11 +81,11 @@ function ChatInput({ onSend, onClear, disabled }) {
           variant="contained"
           disabled={disabled || !value.trim()}
           endIcon={<SendRoundedIcon />}
-          sx={{ minWidth: 112, height: 40 }}
+          sx={{ minWidth: 118, height: 42 }}
         >
           Enviar
         </Button>
-      </Paper>
+      </Box>
     </Box>
   );
 }

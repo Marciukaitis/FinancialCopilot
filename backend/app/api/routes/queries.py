@@ -69,6 +69,16 @@ async def query_documents(payload: QueryRequest) -> QueryResponse:
         query=result.query,
         answer=result.answer,
         sources=[SourceResponse(**source) for source in result.sources],
+        retrieved_chunks=[
+            RetrievedChunkResponse(
+                rank=chunk["rank"],
+                content=chunk["content"],
+                source=chunk["source"],
+                score=chunk.get("score"),
+                metadata=chunk.get("metadata") or {},
+            )
+            for chunk in result.retrieved_chunks
+        ],
         chunks_used=result.chunks_used,
         thread_id=result.thread_id,
         cleaned_query=result.cleaned_query,

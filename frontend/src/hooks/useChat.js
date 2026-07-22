@@ -31,6 +31,8 @@ export function useChat() {
           role: "assistant",
           content: response.answer,
           sources: response.sources || [],
+          retrievedChunks: response.retrieved_chunks || [],
+          pipelineSteps: response.pipeline_steps || [],
         };
 
         setMessages((prev) => [...prev, assistantMessage]);

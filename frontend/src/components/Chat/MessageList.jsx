@@ -1,10 +1,9 @@
 import { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import Box from "@mui/material/Box";
-import CircularProgress from "@mui/material/CircularProgress";
-import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import MessageBubble from "./MessageBubble";
+import RagPipeline from "./RagPipeline";
 
 function MessageList({ messages, loading }) {
   const bottomRef = useRef(null);
@@ -22,31 +21,33 @@ function MessageList({ messages, loading }) {
           alignItems: "center",
           justifyContent: "center",
           px: 3,
+          background:
+            "radial-gradient(circle at 50% 40%, rgba(94,234,212,0.16), transparent 55%)",
         }}
       >
-        <Typography color="text.secondary" textAlign="center">
-          Hacé una pregunta sobre tus documentos financieros.
-          <br />
-          Las respuestas se basan únicamente en el contenido indexado.
-        </Typography>
+        <Box sx={{ textAlign: "center", maxWidth: 420 }}>
+          <Typography
+            variant="h6"
+            sx={{ mb: 1, fontFamily: '"Syne", sans-serif' }}
+          >
+            Empezá una consulta
+          </Typography>
+          <Typography color="text.secondary">
+            Elegí una pregunta del panel o escribí la tuya. El copiloto responde
+            solo con evidencia de tus PDFs indexados.
+          </Typography>
+        </Box>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ flex: 1, overflowY: "auto", px: { xs: 2, md: 3 }, py: 2 }}>
+    <Box sx={{ flex: 1, overflowY: "auto", px: { xs: 2, md: 3 }, py: 2.5 }}>
       {messages.map((message) => (
         <MessageBubble key={message.id} message={message} />
       ))}
 
-      {loading && (
-        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 1 }}>
-          <CircularProgress size={18} thickness={5} />
-          <Typography variant="body2" color="text.secondary">
-            Analizando documentos…
-          </Typography>
-        </Stack>
-      )}
+      <RagPipeline loading={loading} />
 
       <div ref={bottomRef} />
     </Box>

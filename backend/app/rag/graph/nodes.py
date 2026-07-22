@@ -147,20 +147,13 @@ class RAGNodes:
             }
 
         answer = self.chain.attach_sources(answer=answer, sources=sources)
-        if sources and "documento:" not in answer.lower():
-            notes.append("Se anexaron fuentes porque la respuesta no citaba documento.")
-        if sources and "página:" not in answer.lower():
-            notes.append("Se anexaron fuentes porque la respuesta no citaba página.")
 
-        if sources and "documento:" in answer.lower() and "página:" in answer.lower():
-            notes.append("Validación OK: respuesta con documento y página.")
-            is_valid = True
-        elif not sources:
-            answer = INSUFFICIENT_INFO_MESSAGE
-            notes.append("Sin fuentes disponibles: respuesta invalidada.")
+        if sources:
+            notes.append("Validación OK: fuentes estructuradas disponibles para la UI.")
             is_valid = True
         else:
-            notes.append("Validación parcial: se forzaron las citas de fuentes.")
+            answer = INSUFFICIENT_INFO_MESSAGE
+            notes.append("Sin fuentes disponibles: respuesta invalidada.")
             is_valid = True
 
         return {

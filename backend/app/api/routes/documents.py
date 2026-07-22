@@ -1,6 +1,10 @@
 """Endpoints de carga e indexación de documentos."""
 
+from pathlib import Path
+from urllib.parse import quote
+
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 from backend.app.core.exceptions import (
     InvalidDocumentError,
@@ -30,6 +34,36 @@ async def get_index_status() -> StatusResponse:
         vector_db=status.vector_db,
         indexed=status.indexed,
         status="ok" if status.indexed else "pending",
+    )
+
+
+@router.get("/documents/{filename}")
+async def get_document(filename: str) -> FileResponse:
+    """Sirve un PDF indexado para previsualización en el navegador."""
+    safe_name = Path(filename).name
+    if safe_name != filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+
+    file_path = document_service.documents_directory / safe_name
+    try:
+        file_path = file_path.resolve()
+        documents_root = document_service.documents_directory.resolve()
+        if not str(file_path).startswith(str(documents_root)):
+            raise HTTPException(status_code=400, detail="Invalid filename.")
+    except OSError as exc:
+        raise HTTPException(status_code=400, detail="Invalid filename.") from exc
+
+    if not file_path.is_file() or file_path.suffix.lower() != ".pdf":
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    return FileResponse(
+        path=file_path,
+        media_type="application/pdf",
+        filename=safe_name,
+        content_disposition_type="inline",
+        headers={
+            "Content-Disposition": f"inline; filename*=UTF-8''{quote(safe_name)}",
+        },
     )
 
 
