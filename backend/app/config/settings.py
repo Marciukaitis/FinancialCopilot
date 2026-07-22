@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
 
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
+    DOCUMENTS_DIRECTORY: str = "./data/documents"
 
     @property
     def cors_origins_list(self) -> list[str]:

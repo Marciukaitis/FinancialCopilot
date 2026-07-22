@@ -30,6 +30,8 @@ Thumbs.db
 
 # ChromaDB / data
 backend/data/
+data/documents/*
+!data/documents/.gitkeep
 *.db
 
 # Node / React
