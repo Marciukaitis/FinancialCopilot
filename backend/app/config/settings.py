@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "text-embedding-3-small"
 
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
+    CHROMA_COLLECTION_NAME: str = "finance_documents"
     DOCUMENTS_DIRECTORY: str = "./data/documents"
 
     CHUNK_SIZE: int = 1000

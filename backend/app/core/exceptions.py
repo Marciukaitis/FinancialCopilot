@@ -24,3 +24,11 @@ class EmbeddingError(Exception):
     def __init__(self, message: str) -> None:
         self.message = message
         super().__init__(message)
+
+
+class VectorStoreError(Exception):
+    """Error al operar sobre la base vectorial."""
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(message)

@@ -32,6 +32,7 @@ Thumbs.db
 backend/data/
 data/documents/*
 !data/documents/.gitkeep
+data/chroma/
 *.db
 
 # Node / React
