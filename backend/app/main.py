@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api.routes import documents, health, root
+from backend.app.api.routes import documents, health, queries, root
 from backend.app.config.settings import settings
 
 
@@ -35,6 +35,7 @@ def create_app() -> FastAPI:
     app.include_router(root.router)
     app.include_router(health.router)
     app.include_router(documents.router)
+    app.include_router(queries.router)
 
     return app
 

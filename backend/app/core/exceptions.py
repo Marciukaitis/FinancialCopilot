@@ -32,3 +32,11 @@ class VectorStoreError(Exception):
     def __init__(self, message: str) -> None:
         self.message = message
         super().__init__(message)
+
+
+class RetrievalError(Exception):
+    """Error al recuperar documentos desde el vector store."""
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(message)

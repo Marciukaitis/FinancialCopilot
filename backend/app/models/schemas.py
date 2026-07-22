@@ -1,5 +1,7 @@
 """Schemas Pydantic compartidos entre endpoints."""
 
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel
 
 
@@ -19,3 +21,21 @@ class ReindexResponse(BaseModel):
     chunks_indexed: int
     collection_name: str
     total_in_store: int
+
+
+class RetrieveRequest(BaseModel):
+    query: str
+
+
+class RetrievedChunkResponse(BaseModel):
+    rank: int
+    content: str
+    source: str
+    score: Optional[float] = None
+    metadata: Dict[str, Any]
+
+
+class RetrieveResponse(BaseModel):
+    query: str
+    k: int
+    results: List[RetrievedChunkResponse]
