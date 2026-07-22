@@ -69,7 +69,9 @@ def test_generate_uses_context_only_prompt(mock_chat: MagicMock) -> None:
     llm.invoke.assert_called_once()
     messages = llm.invoke.call_args[0][0]
     serialized = " ".join(str(message.content) for message in messages)
-    assert "exclusivamente" in serialized.lower() or "ÚNICAMENTE" in serialized
+    assert "nunca inventes" in serialized.lower() or "Nunca inventes" in serialized
+    assert "español" in serialized.lower()
+    assert "suficiente información" in serialized.lower()
 
 
 def test_rag_chain_requires_api_key() -> None:
