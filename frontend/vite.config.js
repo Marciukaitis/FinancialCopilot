@@ -6,7 +6,35 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": {
+      "/health": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/status": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/upload": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/reindex": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/query": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/retrieve": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/docs": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/openapi.json": {
         target: "http://localhost:8000",
         changeOrigin: true,
       },

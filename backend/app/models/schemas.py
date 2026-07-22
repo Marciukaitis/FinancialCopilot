@@ -23,6 +23,12 @@ class ReindexResponse(BaseModel):
     total_in_store: int
 
 
+class StatusResponse(BaseModel):
+    documents_count: int
+    chunks_indexed: int
+    collection_name: str
+    status: str = "ok"
+
 class RetrieveRequest(BaseModel):
     query: str
 

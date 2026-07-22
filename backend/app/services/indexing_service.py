@@ -17,6 +17,13 @@ class IndexingResult:
     total_in_store: int
 
 
+@dataclass
+class IndexStatus:
+    documents_count: int
+    chunks_indexed: int
+    collection_name: str
+
+
 class IndexingService:
     """Orquesta la indexación completa de PDFs en ChromaDB."""
 
@@ -35,6 +42,31 @@ class IndexingService:
         if self._vector_store is None:
             self._vector_store = ChromaStore()
         return self._vector_store
+
+    def get_status(self) -> IndexStatus:
+        """Estado de documentos en disco e indexados en ChromaDB."""
+        from pathlib import Path
+
+        from backend.app.config.settings import settings
+
+        docs_dir = Path(settings.DOCUMENTS_DIRECTORY)
+        documents_count = (
+            len(list(docs_dir.glob("*.pdf"))) if docs_dir.exists() else 0
+        )
+
+        chunks_indexed = 0
+        collection_name = settings.CHROMA_COLLECTION_NAME
+        try:
+            chunks_indexed = self.vector_store.count()
+            collection_name = self.vector_store.collection_name
+        except Exception:
+            chunks_indexed = 0
+
+        return IndexStatus(
+            documents_count=documents_count,
+            chunks_indexed=chunks_indexed,
+            collection_name=collection_name,
+        )
 
     def reindex_all(self) -> IndexingResult:
         """

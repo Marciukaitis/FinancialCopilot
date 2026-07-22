@@ -7,13 +7,24 @@ from backend.app.core.exceptions import (
     PDFLoadError,
     VectorStoreError,
 )
-from backend.app.models.schemas import ReindexResponse, UploadResponse
+from backend.app.models.schemas import ReindexResponse, StatusResponse, UploadResponse
 from backend.app.services.document_service import DocumentService
 from backend.app.services.indexing_service import IndexingService
 
 router = APIRouter(tags=["documents"])
 document_service = DocumentService()
 indexing_service = IndexingService()
+
+
+@router.get("/status", response_model=StatusResponse)
+async def get_index_status() -> StatusResponse:
+    """Indicador de documentos disponibles e indexados."""
+    status = indexing_service.get_status()
+    return StatusResponse(
+        documents_count=status.documents_count,
+        chunks_indexed=status.chunks_indexed,
+        collection_name=status.collection_name,
+    )
 
 
 @router.post("/upload", response_model=UploadResponse)
