@@ -1,8 +1,8 @@
 """
-Script de verificación del pipeline RAG (LangGraph).
+Script de verificación del pipeline RAG con memoria conversacional.
 
-Uso (desde la raíz, con OPENAI_API_KEY y documentos indexados):
-    python -m backend.app.rag.graph.run_rag "¿cuál es el margen operativo?"
+Uso:
+    python -m backend.app.rag.graph.run_rag
 """
 
 import sys
@@ -11,40 +11,38 @@ from backend.app.rag.graph.rag_graph import RAGGraph
 
 
 def main() -> None:
-    query = " ".join(sys.argv[1:]).strip()
-    if not query:
-        query = input("Consulta: ").strip()
+    graph = RAGGraph()
+    thread_id = None
 
-    if not query:
-        print("Debés indicar una consulta.")
-        sys.exit(1)
-
-    result = RAGGraph().invoke(query)
-
-    print("\n" + "=" * 60)
-    print("Flujo: Analizar → Buscar → Generar → Validar")
-    print("-" * 60)
-    print(f"Pregunta: {result.query}")
-    print(f"Query limpia: {result.cleaned_query}")
-    print(f"Intent: {result.analysis.get('intent')}")
-    print(f"Chunks usados: {result.chunks_used}")
-    print(f"Validación OK: {result.is_valid}")
-    if result.validation_notes:
-        print("Notas de validación:")
-        for note in result.validation_notes:
-            print(f"  - {note}")
-    print("-" * 60)
-    print("Respuesta:")
-    print(result.answer)
-    print("-" * 60)
-    print("Fuentes:")
-    if not result.sources:
-        print("  (sin fuentes recuperadas)")
-    for source in result.sources:
-        page = source.get("page")
-        page_label = str(page) if page is not None else "desconocida"
-        print(f"  - Documento: {source.get('document')} | Página: {page_label}")
+    print("Finance Copilot — chat con memoria (escribí 'salir' para terminar)")
     print("=" * 60)
+
+    while True:
+        if sys.argv[1:]:
+            query = " ".join(sys.argv[1:]).strip()
+            sys.argv = [sys.argv[0]]
+        else:
+            query = input("\nVos: ").strip()
+
+        if not query:
+            continue
+        if query.lower() in {"salir", "exit", "quit"}:
+            break
+
+        result = graph.invoke(query, thread_id=thread_id)
+        thread_id = result.thread_id
+
+        print(f"\nthread_id: {result.thread_id}")
+        print(f"follow-up: {result.analysis.get('is_followup')}")
+        print(f"search_query: {result.search_query}")
+        print("-" * 60)
+        print("Copilot:")
+        print(result.answer)
+        print("-" * 60)
+        for source in result.sources:
+            page = source.get("page")
+            page_label = str(page) if page is not None else "desconocida"
+            print(f"  Fuente → Documento: {source.get('document')} | Página: {page_label}")
 
 
 if __name__ == "__main__":

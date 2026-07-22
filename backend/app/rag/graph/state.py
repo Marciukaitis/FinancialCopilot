@@ -1,9 +1,17 @@
-"""Estado y resultado del grafo RAG con LangGraph."""
+"""Estado y resultado del grafo RAG con memoria conversacional."""
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Annotated, Any, Dict, List, TypedDict
 
 from backend.app.rag.retriever.document_retriever import RetrievedChunk
+
+
+def append_history(
+    existing: List[Dict[str, str]],
+    new: List[Dict[str, str]],
+) -> List[Dict[str, str]]:
+    """Reducer de LangGraph: acumula turnos de la conversación."""
+    return (existing or []) + (new or [])
 
 
 class RAGState(TypedDict, total=False):
@@ -12,8 +20,12 @@ class RAGState(TypedDict, total=False):
     # Entrada
     query: str
 
+    # Memoria conversacional (persistida por thread_id)
+    conversation_history: Annotated[List[Dict[str, str]], append_history]
+
     # Nodo 1 — Analizar pregunta
     cleaned_query: str
+    search_query: str
     analysis: Dict[str, Any]
 
     # Nodo 2 — Buscar documentos
@@ -36,9 +48,12 @@ class RAGResult:
     query: str
     answer: str
     context: str
+    thread_id: str
     sources: List[Dict[str, Any]] = field(default_factory=list)
     chunks_used: int = 0
     cleaned_query: str = ""
+    search_query: str = ""
     analysis: Dict[str, Any] = field(default_factory=dict)
     is_valid: bool = True
     validation_notes: List[str] = field(default_factory=list)
+    conversation_history: List[Dict[str, str]] = field(default_factory=list)

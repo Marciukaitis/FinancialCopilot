@@ -1,4 +1,4 @@
-"""Servicio de consultas: retrieval y RAG completo."""
+"""Servicio de consultas: retrieval y RAG con memoria conversacional."""
 
 from typing import List, Optional
 
@@ -32,6 +32,6 @@ class QueryService:
     def retrieve(self, query: str) -> List[RetrievedChunk]:
         return self.retriever.retrieve_with_scores(query)
 
-    def ask(self, query: str) -> RAGResult:
-        """Ejecuta el StateGraph: Analizar → Buscar → Generar → Validar."""
-        return self.rag_graph.invoke(query)
+    def ask(self, query: str, thread_id: Optional[str] = None) -> RAGResult:
+        """Ejecuta el StateGraph con memoria por thread_id."""
+        return self.rag_graph.invoke(query, thread_id=thread_id)

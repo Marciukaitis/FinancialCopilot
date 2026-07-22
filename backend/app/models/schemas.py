@@ -43,6 +43,10 @@ class RetrieveResponse(BaseModel):
 
 class QueryRequest(BaseModel):
     query: str
+    thread_id: Optional[str] = Field(
+        default=None,
+        description="ID de conversación para memoria LangGraph. Si se omite, se crea uno nuevo.",
+    )
 
 
 class SourceResponse(BaseModel):
@@ -60,7 +64,9 @@ class QueryResponse(BaseModel):
     answer: str
     sources: List[SourceResponse]
     chunks_used: int
+    thread_id: str
     cleaned_query: Optional[str] = None
+    search_query: Optional[str] = None
     is_valid: bool = True
     validation_notes: List[str] = []
     analysis: Dict[str, Any] = {}

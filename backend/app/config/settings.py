@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     CHUNK_OVERLAP: int = 200
 
     RETRIEVER_K: int = 4
+    CONVERSATION_HISTORY_TURNS: int = 6
 
     @property
     def cors_origins_list(self) -> list[str]:

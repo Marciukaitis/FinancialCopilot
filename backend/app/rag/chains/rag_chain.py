@@ -8,7 +8,7 @@ from langchain_openai import ChatOpenAI
 
 from backend.app.config.settings import settings
 from backend.app.core.exceptions import RAGError
-from backend.app.rag.chains.prompts import build_rag_prompt
+from backend.app.rag.chains.prompts import build_followup_rewrite_prompt, build_rag_prompt
 from backend.app.rag.retriever.document_retriever import RetrievedChunk
 
 INSUFFICIENT_INFO_MARKERS = (
@@ -41,6 +41,8 @@ class RAGChain:
             api_key=self.api_key,
         )
         self._prompt = build_rag_prompt()
+        self._followup_prompt = build_followup_rewrite_prompt()
+        self.max_history_turns = settings.CONVERSATION_HISTORY_TURNS
 
     @staticmethod
     def normalize_page(page: Any) -> Optional[int]:
@@ -69,6 +71,22 @@ class RAGChain:
             sections.append(f"{header}\n{chunk.content}")
 
         return "\n\n".join(sections)
+
+    def format_chat_history(self, history: List[Dict[str, str]]) -> str:
+        """Serializa el historial reciente para el prompt."""
+        if not history:
+            return "(Sin historial previo)"
+
+        recent = history[-(self.max_history_turns * 2) :]
+        lines: List[str] = []
+        for turn in recent:
+            role = turn.get("role", "user")
+            label = "Usuario" if role == "user" else "Asistente"
+            content = (turn.get("content") or "").strip()
+            if content:
+                lines.append(f"{label}: {content}")
+
+        return "\n".join(lines) if lines else "(Sin historial previo)"
 
     def extract_sources(self, chunks: List[RetrievedChunk]) -> List[Dict[str, Any]]:
         """Lista de fuentes únicas (documento + página)."""
@@ -108,11 +126,7 @@ class RAGChain:
         return "\n".join(lines)
 
     def attach_sources(self, answer: str, sources: List[Dict[str, Any]]) -> str:
-        """
-        Garantiza que la respuesta incluya documento y página.
-
-        Si el modelo no citó fuentes, se anexan de forma estructurada.
-        """
+        """Garantiza que la respuesta incluya documento y página."""
         answer = (answer or "").strip()
         if not sources:
             return answer
@@ -121,20 +135,45 @@ class RAGChain:
             return answer
 
         sources_section = self.format_sources_section(sources)
-        answer_lower = answer.lower()
-
-        # Si ya menciona un bloque de fuentes, no duplicar.
-        if "fuentes:" in answer_lower:
+        if "fuentes:" in answer.lower():
             return answer
 
         return f"{answer}{sources_section}"
 
-    def generate(self, question: str, context: str) -> str:
-        """Invoca GPT con el prompt anclado al contexto."""
+    def rewrite_followup_query(
+        self,
+        question: str,
+        history: List[Dict[str, str]],
+    ) -> str:
+        """Reescribe una pregunta de seguimiento como consulta independiente."""
+        try:
+            messages: List[BaseMessage] = self._followup_prompt.format_messages(
+                chat_history=self.format_chat_history(history),
+                question=question,
+            )
+            response = self._llm.invoke(messages)
+        except Exception as exc:
+            raise RAGError(f"Failed to rewrite follow-up query: {exc}") from exc
+
+        content = response.content
+        if isinstance(content, list):
+            content = "".join(str(part) for part in content)
+
+        rewritten = str(content).strip().strip('"').strip("'")
+        return rewritten or question
+
+    def generate(
+        self,
+        question: str,
+        context: str,
+        chat_history: Optional[List[Dict[str, str]]] = None,
+    ) -> str:
+        """Invoca GPT con el prompt anclado al contexto y la memoria."""
         try:
             messages: List[BaseMessage] = self._prompt.format_messages(
                 context=context,
                 question=question,
+                chat_history=self.format_chat_history(chat_history or []),
             )
             response = self._llm.invoke(messages)
         except Exception as exc:

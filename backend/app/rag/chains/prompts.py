@@ -16,19 +16,36 @@ Tu función es responder preguntas del usuario utilizando exclusivamente el cont
 5. **Cita siempre la fuente.** Cada respuesta con información útil debe indicar el documento y el número de página, con este formato:
    (Documento: nombre.pdf, Página: N)
    No entregues afirmaciones sin citar documento y página. Si hay varias fuentes, cítalas todas.
-6. Mantén un tono profesional, preciso y conciso.
+6. Usa el historial de la conversación solo para interpretar referencias (por ejemplo: "¿y el plazo?") y resolver a qué se refiere el usuario. La información factual debe salir del contexto documental.
+7. Mantén un tono profesional, preciso y conciso.
 """
 
-RAG_USER_PROMPT = """Contexto recuperado de los documentos:
+RAG_USER_PROMPT = """Historial reciente de la conversación:
+{chat_history}
+
+---
+
+Contexto recuperado de los documentos:
 
 {context}
 
 ---
 
-Pregunta del usuario:
+Pregunta actual del usuario:
 {question}
 
-Instrucciones: responde en español, basándote exclusivamente en el contexto anterior. Incluye siempre documento y número de página en la cita. Si la respuesta no está en el contexto, indícalo sin inventar información."""
+Instrucciones: responde en español, basándote exclusivamente en el contexto documental. Usa el historial solo para entender referencias. Incluye siempre documento y número de página. Si la respuesta no está en el contexto, indícalo sin inventar información."""
+
+FOLLOWUP_REWRITE_PROMPT = """Eres un asistente que reescribe preguntas de seguimiento para búsqueda documental.
+
+Historial de la conversación:
+{chat_history}
+
+Pregunta de seguimiento del usuario:
+{question}
+
+Reescribe la pregunta como una consulta independiente, completa y en español, incorporando el tema del historial cuando haga falta.
+Responde SOLO con la consulta reescrita, sin explicaciones."""
 
 
 def build_rag_prompt() -> ChatPromptTemplate:
@@ -36,5 +53,13 @@ def build_rag_prompt() -> ChatPromptTemplate:
         [
             ("system", RAG_SYSTEM_PROMPT),
             ("human", RAG_USER_PROMPT),
+        ]
+    )
+
+
+def build_followup_rewrite_prompt() -> ChatPromptTemplate:
+    return ChatPromptTemplate.from_messages(
+        [
+            ("human", FOLLOWUP_REWRITE_PROMPT),
         ]
     )

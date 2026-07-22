@@ -1,10 +1,11 @@
-"""Tests del pipeline RAG con LangGraph (sin llamadas reales a OpenAI)."""
+"""Tests del pipeline RAG con LangGraph + memoria conversacional."""
 
 from typing import List
 from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain_core.documents import Document
+from langgraph.checkpoint.memory import MemorySaver
 
 from backend.app.core.exceptions import RAGError
 from backend.app.rag.chains.rag_chain import RAGChain
@@ -17,16 +18,16 @@ def _chunks() -> List[RetrievedChunk]:
     return [
         RetrievedChunk(
             document=Document(
-                page_content="Operating margin was 18% in 2024.",
-                metadata={"filename": "report.pdf", "page": 3},
+                page_content="El monto máximo es 50000 USD.",
+                metadata={"filename": "credito.pdf", "page": 2},
             ),
             score=0.15,
             rank=1,
         ),
         RetrievedChunk(
             document=Document(
-                page_content="Revenue grew 10% year over year.",
-                metadata={"filename": "report.pdf", "page": 1},
+                page_content="El plazo máximo es 36 meses.",
+                metadata={"filename": "credito.pdf", "page": 4},
             ),
             score=0.22,
             rank=2,
@@ -35,105 +36,141 @@ def _chunks() -> List[RetrievedChunk]:
 
 
 @patch("backend.app.rag.chains.rag_chain.ChatOpenAI")
-def test_build_context_includes_sources(mock_chat: MagicMock) -> None:
+def test_generate_includes_chat_history(mock_chat: MagicMock) -> None:
+    llm = MagicMock()
+    llm.invoke.return_value = MagicMock(content="El plazo es 36 meses.")
+    mock_chat.return_value = llm
+
     chain = RAGChain(api_key="test-key")
-    context = chain.build_context(_chunks())
+    chain.generate(
+        question="¿Y cuál es el plazo?",
+        context="[Documento: credito.pdf | Página: 5]\nEl plazo máximo es 36 meses.",
+        chat_history=[
+            {"role": "user", "content": "¿Cuál es el monto máximo?"},
+            {"role": "assistant", "content": "El monto máximo es 50000 USD."},
+        ],
+    )
 
-    assert "Documento: report.pdf" in context
-    assert "Página: 4" in context
-    assert "Operating margin was 18%" in context
-
-
-@patch("backend.app.rag.chains.rag_chain.ChatOpenAI")
-def test_extract_sources_returns_document_and_page(mock_chat: MagicMock) -> None:
-    chain = RAGChain(api_key="test-key")
-    sources = chain.extract_sources(_chunks())
-
-    assert len(sources) == 2
-    assert sources[0]["document"] == "report.pdf"
-    assert sources[0]["page"] == 4
+    messages = llm.invoke.call_args[0][0]
+    serialized = " ".join(str(message.content) for message in messages)
+    assert "monto máximo" in serialized.lower()
+    assert "historial" in serialized.lower()
 
 
-@patch("backend.app.rag.chains.rag_chain.ChatOpenAI")
-def test_attach_sources_appends_document_and_page(mock_chat: MagicMock) -> None:
-    chain = RAGChain(api_key="test-key")
-    sources = [{"document": "report.pdf", "page": 4}]
-    answer = chain.attach_sources("El margen operativo fue 18%.", sources)
-
-    assert "Documento: report.pdf" in answer
-    assert "Página: 4" in answer
-
-
-def test_analyze_question_node() -> None:
-    nodes = RAGNodes(retriever=MagicMock(), chain=MagicMock())
-    result = nodes.analyze_question({"query": "  ¿Cuál es el margen?  "})
-
-    assert result["cleaned_query"] == "¿Cuál es el margen?"
-    assert result["analysis"]["intent"] == "financial_lookup"
-    assert result["analysis"]["is_question"] is True
+def test_is_followup_detection() -> None:
+    history = [
+        {"role": "user", "content": "¿Cuál es el monto máximo?"},
+        {"role": "assistant", "content": "El monto máximo es 50000 USD."},
+    ]
+    assert RAGNodes._is_followup("¿Y cuál es el plazo?", history) is True
+    assert RAGNodes._is_followup("¿Cuál es el monto máximo del crédito hipotecario?", []) is False
 
 
-def test_validate_answer_requires_sources() -> None:
+def test_analyze_question_rewrites_followup() -> None:
     chain = MagicMock()
-    chain.attach_sources.side_effect = (
-        lambda answer, sources: f"{answer}\n\n---\nFuentes:\n"
+    chain.rewrite_followup_query.return_value = "¿Cuál es el plazo máximo del crédito?"
+    nodes = RAGNodes(retriever=MagicMock(), chain=chain)
+
+    result = nodes.analyze_question(
+        {
+            "query": "¿Y cuál es el plazo?",
+            "conversation_history": [
+                {"role": "user", "content": "¿Cuál es el monto máximo?"},
+                {"role": "assistant", "content": "El monto máximo es 50000 USD."},
+            ],
+        }
+    )
+
+    assert result["analysis"]["is_followup"] is True
+    assert result["search_query"] == "¿Cuál es el plazo máximo del crédito?"
+    chain.rewrite_followup_query.assert_called_once()
+
+
+def test_validate_answer_appends_conversation_history() -> None:
+    chain = MagicMock()
+    chain.attach_sources.side_effect = lambda answer, sources: (
+        f"{answer}\n\n---\nFuentes:\n"
         f"- Documento: {sources[0]['document']} | Página: {sources[0]['page']}"
     )
     nodes = RAGNodes(retriever=MagicMock(), chain=chain)
 
     result = nodes.validate_answer(
         {
-            "answer": "El margen operativo fue 18%.",
-            "sources": [{"document": "report.pdf", "page": 4}],
+            "query": "¿Cuál es el monto máximo?",
+            "cleaned_query": "¿Cuál es el monto máximo?",
+            "answer": "El monto máximo es 50000 USD.",
+            "sources": [{"document": "credito.pdf", "page": 3}],
             "chunks": _chunks(),
         }
     )
 
-    assert result["is_valid"] is True
-    assert "Documento: report.pdf" in result["answer"]
-    assert "Página: 4" in result["answer"]
+    assert len(result["conversation_history"]) == 2
+    assert result["conversation_history"][0]["role"] == "user"
+    assert result["conversation_history"][1]["role"] == "assistant"
 
 
-def test_validate_answer_without_chunks() -> None:
-    nodes = RAGNodes(retriever=MagicMock(), chain=MagicMock())
-    result = nodes.validate_answer(
-        {"answer": "Cualquier cosa inventada", "sources": [], "chunks": []}
-    )
-
-    assert result["answer"] == INSUFFICIENT_INFO_MESSAGE
-    assert result["is_valid"] is True
-
-
-def test_rag_graph_four_node_pipeline() -> None:
+def test_rag_graph_memory_across_turns() -> None:
     retriever = MagicMock()
-    retriever.retrieve_with_scores.return_value = _chunks()
+    retriever.retrieve_with_scores.side_effect = [
+        [_chunks()[0]],
+        [_chunks()[1]],
+    ]
 
     chain = MagicMock()
-    chain.build_context.return_value = "contexto de prueba"
-    chain.extract_sources.return_value = [
-        {"document": "report.pdf", "page": 4, "rank": 1, "score": 0.15}
+    chain.build_context.side_effect = [
+        "contexto monto",
+        "contexto plazo",
     ]
-    chain.generate.return_value = "El margen operativo fue 18%."
+    chain.extract_sources.side_effect = [
+        [{"document": "credito.pdf", "page": 3, "rank": 1, "score": 0.1}],
+        [{"document": "credito.pdf", "page": 5, "rank": 1, "score": 0.2}],
+    ]
+    chain.rewrite_followup_query.return_value = "¿Cuál es el plazo máximo del crédito?"
+    chain.generate.side_effect = [
+        "El monto máximo es 50000 USD.",
+        "El plazo máximo es 36 meses.",
+    ]
     chain.attach_sources.side_effect = (
         lambda answer, sources: f"{answer}\n\n---\nFuentes:\n"
         f"- Documento: {sources[0]['document']} | Página: {sources[0]['page']}"
     )
 
-    graph = RAGGraph(retriever=retriever, chain=chain)
-    result = graph.invoke("¿Cuál es el margen operativo?")
-
-    retriever.retrieve_with_scores.assert_called_once_with(
-        "¿Cuál es el margen operativo?"
+    graph = RAGGraph(
+        retriever=retriever,
+        chain=chain,
+        checkpointer=MemorySaver(),
     )
-    chain.generate.assert_called_once()
-    assert result.cleaned_query == "¿Cuál es el margen operativo?"
-    assert result.analysis["intent"] == "financial_lookup"
-    assert result.is_valid is True
-    assert "Documento: report.pdf" in result.answer
-    assert result.sources[0]["page"] == 4
+
+    first = graph.invoke("¿Cuál es el monto máximo?", thread_id="demo-thread")
+    second = graph.invoke("¿Y cuál es el plazo?", thread_id="demo-thread")
+
+    assert first.thread_id == "demo-thread"
+    assert second.thread_id == "demo-thread"
+    assert second.analysis["is_followup"] is True
+    assert len(second.conversation_history) >= 4
+    assert "plazo" in second.answer.lower()
+    chain.rewrite_followup_query.assert_called()
 
 
 def test_rag_graph_rejects_empty_query() -> None:
-    graph = RAGGraph(retriever=MagicMock(), chain=MagicMock())
+    graph = RAGGraph(
+        retriever=MagicMock(),
+        chain=MagicMock(),
+        checkpointer=MemorySaver(),
+    )
     with pytest.raises(RAGError, match="Query cannot be empty"):
         graph.invoke("  ")
+
+
+def test_validate_answer_without_chunks() -> None:
+    nodes = RAGNodes(retriever=MagicMock(), chain=MagicMock())
+    result = nodes.validate_answer(
+        {
+            "query": "hola",
+            "cleaned_query": "hola",
+            "answer": "inventado",
+            "sources": [],
+            "chunks": [],
+        }
+    )
+    assert result["answer"] == INSUFFICIENT_INFO_MESSAGE

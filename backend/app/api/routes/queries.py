@@ -56,12 +56,12 @@ async def retrieve_documents(payload: RetrieveRequest) -> RetrieveResponse:
 @router.post("/query", response_model=QueryResponse)
 async def query_documents(payload: QueryRequest) -> QueryResponse:
     """
-    Pipeline RAG con LangGraph:
+    Pipeline RAG con LangGraph + memoria conversacional.
 
-    Usuario → Analizar → Buscar → Generar → Validar → Usuario
+    Reutilizá el mismo thread_id para preguntas de seguimiento.
     """
     try:
-        result = query_service.ask(payload.query)
+        result = query_service.ask(payload.query, thread_id=payload.thread_id)
     except PIPELINE_ERRORS as exc:
         raise HTTPException(status_code=400, detail=exc.message) from exc
 
@@ -70,7 +70,9 @@ async def query_documents(payload: QueryRequest) -> QueryResponse:
         answer=result.answer,
         sources=[SourceResponse(**source) for source in result.sources],
         chunks_used=result.chunks_used,
+        thread_id=result.thread_id,
         cleaned_query=result.cleaned_query,
+        search_query=result.search_query,
         is_valid=result.is_valid,
         validation_notes=result.validation_notes,
         analysis=result.analysis,

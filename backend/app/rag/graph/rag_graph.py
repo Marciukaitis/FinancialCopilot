@@ -1,11 +1,13 @@
-"""Grafo LangGraph del pipeline RAG con StateGraph."""
+"""Grafo LangGraph del pipeline RAG con StateGraph y MemorySaver."""
 
 from typing import Optional
+from uuid import uuid4
 
 from langgraph.graph import END, StateGraph
 
 from backend.app.core.exceptions import RAGError, RetrievalError
 from backend.app.rag.chains.rag_chain import RAGChain
+from backend.app.rag.graph.memory import memory_saver
 from backend.app.rag.graph.nodes import RAGNodes
 from backend.app.rag.graph.state import RAGResult, RAGState
 from backend.app.rag.retriever.document_retriever import DocumentRetriever
@@ -13,7 +15,7 @@ from backend.app.rag.retriever.document_retriever import DocumentRetriever
 
 class RAGGraph:
     """
-    Flujo LangGraph:
+    Flujo LangGraph con memoria conversacional:
 
     Usuario
       → analyze_question
@@ -27,10 +29,12 @@ class RAGGraph:
         self,
         retriever: Optional[DocumentRetriever] = None,
         chain: Optional[RAGChain] = None,
+        checkpointer=None,
     ) -> None:
         self.retriever = retriever or DocumentRetriever()
         self.chain = chain or RAGChain()
         self.nodes = RAGNodes(retriever=self.retriever, chain=self.chain)
+        self.checkpointer = checkpointer if checkpointer is not None else memory_saver
         self._graph = self._build_graph()
 
     def _build_graph(self):
@@ -47,15 +51,18 @@ class RAGGraph:
         graph.add_edge("generate_answer", "validate_answer")
         graph.add_edge("validate_answer", END)
 
-        return graph.compile()
+        return graph.compile(checkpointer=self.checkpointer)
 
-    def invoke(self, query: str) -> RAGResult:
+    def invoke(self, query: str, thread_id: Optional[str] = None) -> RAGResult:
         query = (query or "").strip()
         if not query:
             raise RAGError("Query cannot be empty.")
 
+        thread_id = (thread_id or "").strip() or str(uuid4())
+        config = {"configurable": {"thread_id": thread_id}}
+
         try:
-            final_state = self._graph.invoke({"query": query})
+            final_state = self._graph.invoke({"query": query}, config=config)
         except RetrievalError:
             raise
         except RAGError:
@@ -68,10 +75,13 @@ class RAGGraph:
             query=query,
             answer=final_state.get("answer") or "",
             context=final_state.get("context") or "",
+            thread_id=thread_id,
             sources=final_state.get("sources") or [],
             chunks_used=len(chunks),
             cleaned_query=final_state.get("cleaned_query") or query,
+            search_query=final_state.get("search_query") or query,
             analysis=final_state.get("analysis") or {},
             is_valid=bool(final_state.get("is_valid", True)),
             validation_notes=final_state.get("validation_notes") or [],
+            conversation_history=final_state.get("conversation_history") or [],
         )
