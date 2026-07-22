@@ -19,7 +19,11 @@ class Settings(BaseSettings):
 
     BACKEND_HOST: str = "0.0.0.0"
     BACKEND_PORT: int = 8000
-    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+    CORS_ORIGINS: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,"
+        "http://localhost,http://127.0.0.1,"
+        "http://localhost:80,http://127.0.0.1:80"
+    )
 
     # Embeddings locales (HuggingFace / Sentence Transformers)
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
