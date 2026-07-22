@@ -67,9 +67,13 @@ class RAGGraph:
         return {"context": context, "sources": sources}
 
     def _generate_node(self, state: RAGState) -> RAGState:
-        answer = self.chain.generate(
+        raw_answer = self.chain.generate(
             question=state["query"],
             context=state.get("context") or "",
+        )
+        answer = self.chain.attach_sources(
+            answer=raw_answer,
+            sources=state.get("sources") or [],
         )
         return {"answer": answer}
 

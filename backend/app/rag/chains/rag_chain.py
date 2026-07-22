@@ -1,6 +1,6 @@
 """Construcción de contexto y generación de respuestas con GPT."""
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from langchain_core.documents import Document
 from langchain_core.messages import BaseMessage
@@ -10,6 +10,11 @@ from backend.app.config.settings import settings
 from backend.app.core.exceptions import RAGError
 from backend.app.rag.chains.prompts import build_rag_prompt
 from backend.app.rag.retriever.document_retriever import RetrievedChunk
+
+INSUFFICIENT_INFO_MARKERS = (
+    "no poseo suficiente información",
+    "no encontré información suficiente",
+)
 
 
 class RAGChain:
@@ -37,6 +42,17 @@ class RAGChain:
         )
         self._prompt = build_rag_prompt()
 
+    @staticmethod
+    def normalize_page(page: Any) -> Optional[int]:
+        """Convierte la página de PyPDF (0-index) a número legible (1-index)."""
+        if page is None or page == "n/a":
+            return None
+        try:
+            page_number = int(page)
+        except (TypeError, ValueError):
+            return None
+        return page_number + 1 if page_number >= 0 else page_number
+
     def build_context(self, chunks: List[RetrievedChunk]) -> str:
         """Une los chunks recuperados en un único bloque de contexto."""
         if not chunks:
@@ -44,33 +60,74 @@ class RAGChain:
 
         sections: List[str] = []
         for chunk in chunks:
-            source = chunk.source
-            page = chunk.metadata.get("page", "n/a")
-            header = f"[Fuente: {source} | página: {page} | rank: {chunk.rank}]"
+            document = chunk.source
+            page = self.normalize_page(chunk.metadata.get("page"))
+            page_label = str(page) if page is not None else "desconocida"
+            header = (
+                f"[Documento: {document} | Página: {page_label} | rank: {chunk.rank}]"
+            )
             sections.append(f"{header}\n{chunk.content}")
 
         return "\n\n".join(sections)
 
-    def extract_sources(self, chunks: List[RetrievedChunk]) -> List[dict]:
-        """Lista de fuentes únicas usadas en la respuesta."""
+    def extract_sources(self, chunks: List[RetrievedChunk]) -> List[Dict[str, Any]]:
+        """Lista de fuentes únicas (documento + página)."""
         seen = set()
-        sources: List[dict] = []
+        sources: List[Dict[str, Any]] = []
 
         for chunk in chunks:
-            key = (chunk.source, chunk.metadata.get("page"))
+            document = chunk.source
+            page = self.normalize_page(chunk.metadata.get("page"))
+            key = (document, page)
             if key in seen:
                 continue
             seen.add(key)
             sources.append(
                 {
-                    "filename": chunk.source,
-                    "page": chunk.metadata.get("page"),
+                    "document": document,
+                    "page": page,
                     "rank": chunk.rank,
                     "score": chunk.score,
                 }
             )
 
         return sources
+
+    def format_sources_section(self, sources: List[Dict[str, Any]]) -> str:
+        """Bloque de fuentes obligatorio para la respuesta final."""
+        if not sources:
+            return ""
+
+        lines = ["", "---", "Fuentes:"]
+        for source in sources:
+            document = source.get("document") or "desconocido"
+            page = source.get("page")
+            page_label = str(page) if page is not None else "desconocida"
+            lines.append(f"- Documento: {document} | Página: {page_label}")
+
+        return "\n".join(lines)
+
+    def attach_sources(self, answer: str, sources: List[Dict[str, Any]]) -> str:
+        """
+        Garantiza que la respuesta incluya documento y página.
+
+        Si el modelo no citó fuentes, se anexan de forma estructurada.
+        """
+        answer = (answer or "").strip()
+        if not sources:
+            return answer
+
+        if any(marker in answer.lower() for marker in INSUFFICIENT_INFO_MARKERS):
+            return answer
+
+        sources_section = self.format_sources_section(sources)
+        answer_lower = answer.lower()
+
+        # Si ya menciona un bloque de fuentes, no duplicar.
+        if "fuentes:" in answer_lower:
+            return answer
+
+        return f"{answer}{sources_section}"
 
     def generate(self, question: str, context: str) -> str:
         """Invoca GPT con el prompt anclado al contexto."""

@@ -28,15 +28,13 @@ def main() -> None:
     print("Respuesta:")
     print(result.answer)
     print("-" * 60)
-    print("Fuentes:")
+    print("Fuentes estructuradas:")
     if not result.sources:
-        print("  (sin fuentes)")
+        print("  (sin fuentes recuperadas)")
     for source in result.sources:
-        print(
-            f"  - {source.get('filename')} "
-            f"| page={source.get('page')} "
-            f"| rank={source.get('rank')}"
-        )
+        page = source.get("page")
+        page_label = str(page) if page is not None else "desconocida"
+        print(f"  - Documento: {source.get('document')} | Página: {page_label}")
     print("=" * 60)
 
 

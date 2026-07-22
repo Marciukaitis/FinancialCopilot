@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class UploadResponse(BaseModel):
@@ -46,8 +46,11 @@ class QueryRequest(BaseModel):
 
 
 class SourceResponse(BaseModel):
-    filename: str
-    page: Optional[Any] = None
+    document: str = Field(..., description="Nombre del documento PDF")
+    page: Optional[int] = Field(
+        None,
+        description="Número de página (1-indexado)",
+    )
     rank: Optional[int] = None
     score: Optional[float] = None
 
