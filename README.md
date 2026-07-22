@@ -4,7 +4,7 @@ Asistente empresarial de **RAG** (Retrieval-Augmented Generation) para consultar
 
 Subí PDFs, indexalos automáticamente y obtené respuestas ancladas **únicamente** al contexto recuperado, con cita de documento y página.
 
-![Demo de Finance Copilot](docs/demo.gif)
+![Demo de Finance Copilot](docs/demo2.gif)
 
 > Flujo: carga de PDFs → indexación → consulta → respuesta con fuente.
 
