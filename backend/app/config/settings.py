@@ -23,6 +23,8 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: str = ""
     EMBEDDING_MODEL: str = "text-embedding-3-small"
+    LLM_MODEL: str = "gpt-4o-mini"
+    LLM_TEMPERATURE: float = 0.0
 
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
     CHROMA_COLLECTION_NAME: str = "finance_documents"

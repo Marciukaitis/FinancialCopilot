@@ -1,12 +1,15 @@
-"""Endpoints de consultas semánticas (sin LLM)."""
+"""Endpoints de consultas semánticas y RAG."""
 
 from fastapi import APIRouter, HTTPException
 
-from backend.app.core.exceptions import RetrievalError
+from backend.app.core.exceptions import RAGError, RetrievalError
 from backend.app.models.schemas import (
+    QueryRequest,
+    QueryResponse,
     RetrieveRequest,
     RetrieveResponse,
     RetrievedChunkResponse,
+    SourceResponse,
 )
 from backend.app.services.query_service import QueryService
 
@@ -35,4 +38,24 @@ async def retrieve_documents(payload: RetrieveRequest) -> RetrieveResponse:
             )
             for item in results
         ],
+    )
+
+
+@router.post("/query", response_model=QueryResponse)
+async def query_documents(payload: QueryRequest) -> QueryResponse:
+    """
+    Pipeline RAG completo:
+
+    Usuario → Retriever → Contexto → Prompt → GPT → Respuesta
+    """
+    try:
+        result = query_service.ask(payload.query)
+    except (RetrievalError, RAGError) as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+
+    return QueryResponse(
+        query=result.query,
+        answer=result.answer,
+        sources=[SourceResponse(**source) for source in result.sources],
+        chunks_used=result.chunks_used,
     )

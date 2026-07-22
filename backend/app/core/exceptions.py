@@ -40,3 +40,11 @@ class RetrievalError(Exception):
     def __init__(self, message: str) -> None:
         self.message = message
         super().__init__(message)
+
+
+class RAGError(Exception):
+    """Error en el pipeline RAG."""
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(message)

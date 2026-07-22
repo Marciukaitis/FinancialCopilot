@@ -39,3 +39,21 @@ class RetrieveResponse(BaseModel):
     query: str
     k: int
     results: List[RetrievedChunkResponse]
+
+
+class QueryRequest(BaseModel):
+    query: str
+
+
+class SourceResponse(BaseModel):
+    filename: str
+    page: Optional[Any] = None
+    rank: Optional[int] = None
+    score: Optional[float] = None
+
+
+class QueryResponse(BaseModel):
+    query: str
+    answer: str
+    sources: List[SourceResponse]
+    chunks_used: int
