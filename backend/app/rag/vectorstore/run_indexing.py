@@ -1,7 +1,7 @@
 """
 Script de verificación: reindexa todos los PDFs en ChromaDB.
 
-Uso (desde la raíz, con OPENAI_API_KEY en .env):
+Uso (desde la raíz del proyecto):
     python -m backend.app.rag.vectorstore.run_indexing
 """
 

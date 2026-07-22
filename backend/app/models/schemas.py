@@ -27,7 +27,13 @@ class StatusResponse(BaseModel):
     documents_count: int
     chunks_indexed: int
     collection_name: str
+    documents: List[str] = []
+    embedding_model: str = ""
+    llm_model: str = ""
+    vector_db: str = "ChromaDB"
+    indexed: bool = False
     status: str = "ok"
+
 
 class RetrieveRequest(BaseModel):
     query: str

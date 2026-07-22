@@ -2,9 +2,9 @@ import PropTypes from "prop-types";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import IndexStatus from "./IndexStatus";
+import KnowledgeBaseStatus from "./KnowledgeBaseStatus";
+import SampleQuestions from "./SampleQuestions";
 import UploadPanel from "./UploadPanel";
 
 function DocumentsPanel({
@@ -13,6 +13,7 @@ function DocumentsPanel({
   error,
   lastUploaded,
   onUpload,
+  onSelectQuestion,
 }) {
   return (
     <Paper
@@ -20,37 +21,34 @@ function DocumentsPanel({
         height: "100%",
         border: "1px solid",
         borderColor: "divider",
-        p: 2.5,
         display: "flex",
         flexDirection: "column",
-        gap: 2.5,
+        overflow: "hidden",
       }}
     >
-      <Box>
-        <Typography variant="h5">Documentos</Typography>
+      <Box sx={{ px: 2.5, py: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+        <Typography variant="h5">Knowledge Base</Typography>
         <Typography variant="body2" color="text.secondary">
-          Gestión e índice vectorial
+          Documentos, estado del índice y preguntas de demo
         </Typography>
       </Box>
 
-      <Divider />
+      <Box sx={{ flex: 1, overflowY: "auto", p: 2.5 }}>
+        <KnowledgeBaseStatus status={status} />
 
-      <IndexStatus status={status} />
+        <Divider sx={{ my: 2.5 }} />
 
-      <Divider />
+        <UploadPanel
+          onUpload={onUpload}
+          uploading={uploading}
+          error={error}
+          lastUploaded={lastUploaded}
+        />
 
-      <UploadPanel
-        onUpload={onUpload}
-        uploading={uploading}
-        error={error}
-        lastUploaded={lastUploaded}
-      />
+        <Divider sx={{ my: 2.5 }} />
 
-      <Stack sx={{ mt: "auto" }} spacing={0.5}>
-        <Typography variant="caption" color="text.secondary">
-          Colección: {status?.collection_name || "finance_documents"}
-        </Typography>
-      </Stack>
+        <SampleQuestions onSelect={onSelectQuestion} />
+      </Box>
     </Paper>
   );
 }
@@ -61,6 +59,7 @@ DocumentsPanel.propTypes = {
   error: PropTypes.string,
   lastUploaded: PropTypes.string,
   onUpload: PropTypes.func.isRequired,
+  onSelectQuestion: PropTypes.func.isRequired,
 };
 
 DocumentsPanel.defaultProps = {

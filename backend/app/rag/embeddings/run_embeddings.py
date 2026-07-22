@@ -1,11 +1,11 @@
 """
-Script de verificación: carga PDFs, hace chunking y genera embeddings.
+Script de verificación: carga PDFs, hace chunking y genera embeddings locales.
 
-Uso (desde la raíz del proyecto, con OPENAI_API_KEY en .env):
+Uso (desde la raíz del proyecto):
     python -m backend.app.rag.embeddings.run_embeddings
 """
 
-from backend.app.rag.embeddings.openai_embeddings import EmbeddingService
+from backend.app.rag.embeddings.huggingface_embeddings import EmbeddingService
 from backend.app.rag.ingestion.pdf_loader import PDFDocumentLoader
 from backend.app.rag.ingestion.text_splitter import DocumentChunker
 

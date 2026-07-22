@@ -1,7 +1,7 @@
 """
 Script de verificación: búsqueda semántica en ChromaDB (sin LLM).
 
-Uso (desde la raíz, con OPENAI_API_KEY y documentos indexados):
+Uso (desde la raíz, con documentos indexados y Ollama corriendo):
     python -m backend.app.rag.retriever.run_retrieval "¿cuál es el margen operativo?"
 """
 

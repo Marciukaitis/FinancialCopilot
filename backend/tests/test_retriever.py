@@ -1,4 +1,4 @@
-"""Tests del DocumentRetriever (sin OpenAI real)."""
+"""Tests del DocumentRetriever (sin modelo real)."""
 
 from typing import List
 from unittest.mock import MagicMock

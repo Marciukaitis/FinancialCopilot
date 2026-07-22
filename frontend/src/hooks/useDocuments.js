@@ -5,6 +5,11 @@ const EMPTY_STATUS = {
   documents_count: 0,
   chunks_indexed: 0,
   collection_name: "finance_documents",
+  documents: [],
+  embedding_model: "",
+  llm_model: "",
+  vector_db: "ChromaDB",
+  indexed: false,
   status: "unknown",
 };
 
@@ -17,7 +22,7 @@ export function useDocuments() {
   const refreshStatus = useCallback(async () => {
     try {
       const data = await getIndexStatus();
-      setStatus(data);
+      setStatus({ ...EMPTY_STATUS, ...data });
       setError("");
     } catch (err) {
       setError(err.message || "No se pudo obtener el estado de indexación");
@@ -38,12 +43,7 @@ export function useDocuments() {
       try {
         const result = await uploadDocument(file);
         setLastUploaded(result.filename);
-        setStatus({
-          documents_count: result.documents_loaded,
-          chunks_indexed: result.chunks_indexed,
-          collection_name: result.collection_name,
-          status: "ok",
-        });
+        await refreshStatus();
       } catch (err) {
         setError(err.message || "Error al subir el documento");
         throw err;
@@ -51,7 +51,7 @@ export function useDocuments() {
         setUploading(false);
       }
     },
-    [uploading],
+    [refreshStatus, uploading],
   );
 
   return {

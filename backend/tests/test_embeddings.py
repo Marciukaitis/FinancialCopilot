@@ -1,13 +1,11 @@
-"""Tests del EmbeddingService (sin llamadas reales a OpenAI)."""
+"""Tests del EmbeddingService local (sin cargar el modelo real)."""
 
 from typing import List
 from unittest.mock import MagicMock, patch
 
-import pytest
 from langchain_core.documents import Document
 
-from backend.app.core.exceptions import EmbeddingError
-from backend.app.rag.embeddings.openai_embeddings import EmbeddingService
+from backend.app.rag.embeddings.huggingface_embeddings import EmbeddingService
 
 
 def _chunks() -> List[Document]:
@@ -17,21 +15,16 @@ def _chunks() -> List[Document]:
     ]
 
 
-def test_embed_chunks_requires_api_key() -> None:
-    with pytest.raises(EmbeddingError, match="OPENAI_API_KEY"):
-        EmbeddingService(api_key="")
-
-
-@patch("backend.app.rag.embeddings.openai_embeddings.OpenAIEmbeddings")
-def test_embed_chunks_returns_one_vector_per_chunk(mock_openai: MagicMock) -> None:
+@patch("backend.app.rag.embeddings.huggingface_embeddings.build_embeddings")
+def test_embed_chunks_returns_one_vector_per_chunk(mock_build: MagicMock) -> None:
     mock_instance = MagicMock()
     mock_instance.embed_documents.return_value = [
         [0.1, 0.2, 0.3],
         [0.4, 0.5, 0.6],
     ]
-    mock_openai.return_value = mock_instance
+    mock_build.return_value = mock_instance
 
-    service = EmbeddingService(api_key="test-key", model="text-embedding-3-small")
+    service = EmbeddingService(model="sentence-transformers/all-MiniLM-L6-v2")
     result = service.embed_chunks(_chunks())
 
     assert len(result) == 2
@@ -41,20 +34,20 @@ def test_embed_chunks_returns_one_vector_per_chunk(mock_openai: MagicMock) -> No
     mock_instance.embed_documents.assert_called_once()
 
 
-@patch("backend.app.rag.embeddings.openai_embeddings.OpenAIEmbeddings")
-def test_embed_empty_list(mock_openai: MagicMock) -> None:
-    mock_openai.return_value = MagicMock()
-    service = EmbeddingService(api_key="test-key")
+@patch("backend.app.rag.embeddings.huggingface_embeddings.build_embeddings")
+def test_embed_empty_list(mock_build: MagicMock) -> None:
+    mock_build.return_value = MagicMock()
+    service = EmbeddingService()
     assert service.embed_chunks([]) == []
 
 
-@patch("backend.app.rag.embeddings.openai_embeddings.OpenAIEmbeddings")
-def test_print_embeddings(mock_openai: MagicMock, capsys) -> None:
+@patch("backend.app.rag.embeddings.huggingface_embeddings.build_embeddings")
+def test_print_embeddings(mock_build: MagicMock, capsys) -> None:
     mock_instance = MagicMock()
     mock_instance.embed_documents.return_value = [[0.1, 0.2, 0.3]]
-    mock_openai.return_value = mock_instance
+    mock_build.return_value = mock_instance
 
-    service = EmbeddingService(api_key="test-key")
+    service = EmbeddingService()
     embedded = service.embed_chunks(_chunks()[:1])
     service.print_embeddings(embedded)
 

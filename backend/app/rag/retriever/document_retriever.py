@@ -45,9 +45,6 @@ class DocumentRetriever:
     ) -> None:
         self.vector_store = vector_store or ChromaStore()
         self.k = k if k is not None else settings.RETRIEVER_K
-        self._retriever = self.vector_store.get_vectorstore().as_retriever(
-            search_kwargs={"k": self.k}
-        )
 
     def retrieve(self, query: str) -> List[Document]:
         """Devuelve los k documentos más similares a la consulta."""
@@ -56,8 +53,16 @@ class DocumentRetriever:
             raise RetrievalError("Query cannot be empty.")
 
         try:
-            return self._retriever.invoke(query)
+            store = self.vector_store.get_vectorstore()
+            if store._collection.count() == 0:
+                return []
+            retriever = store.as_retriever(search_kwargs={"k": self.k})
+            return retriever.invoke(query)
         except Exception as exc:
+            message = str(exc)
+            if "does not exist" in message.lower():
+                self.vector_store.ensure_collection()
+                return []
             raise RetrievalError(f"Failed to retrieve documents: {exc}") from exc
 
     def retrieve_with_scores(self, query: str) -> List[RetrievedChunk]:
@@ -67,13 +72,19 @@ class DocumentRetriever:
             raise RetrievalError("Query cannot be empty.")
 
         try:
-            results: List[Tuple[Document, float]] = (
-                self.vector_store.get_vectorstore().similarity_search_with_score(
-                    query,
-                    k=self.k,
-                )
+            store = self.vector_store.get_vectorstore()
+            if store._collection.count() == 0:
+                return []
+
+            results: List[Tuple[Document, float]] = store.similarity_search_with_score(
+                query,
+                k=self.k,
             )
         except Exception as exc:
+            message = str(exc)
+            if "does not exist" in message.lower():
+                self.vector_store.ensure_collection()
+                return []
             raise RetrievalError(f"Failed to retrieve documents: {exc}") from exc
 
         return [

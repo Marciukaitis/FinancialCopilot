@@ -24,6 +24,12 @@ async def get_index_status() -> StatusResponse:
         documents_count=status.documents_count,
         chunks_indexed=status.chunks_indexed,
         collection_name=status.collection_name,
+        documents=status.documents,
+        embedding_model=status.embedding_model,
+        llm_model=status.llm_model,
+        vector_db=status.vector_db,
+        indexed=status.indexed,
+        status="ok" if status.indexed else "pending",
     )
 
 

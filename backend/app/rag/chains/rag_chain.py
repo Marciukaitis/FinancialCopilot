@@ -1,10 +1,10 @@
-"""Construcción de contexto y generación de respuestas con GPT."""
+"""Construcción de contexto y generación de respuestas con Ollama."""
 
 from typing import Any, Dict, List, Optional
 
 from langchain_core.documents import Document
 from langchain_core.messages import BaseMessage
-from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 
 from backend.app.config.settings import settings
 from backend.app.core.exceptions import RAGError
@@ -18,27 +18,25 @@ INSUFFICIENT_INFO_MARKERS = (
 
 
 class RAGChain:
-    """Formatea el contexto y genera la respuesta con GPT."""
+    """Formatea el contexto y genera la respuesta con Ollama (Llama 3.2)."""
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
         model: Optional[str] = None,
+        base_url: Optional[str] = None,
         temperature: Optional[float] = None,
+        llm: Optional[ChatOllama] = None,
     ) -> None:
-        self.api_key = api_key or settings.OPENAI_API_KEY
-        self.model = model or settings.LLM_MODEL
+        self.model = model or settings.OLLAMA_MODEL
+        self.base_url = base_url or settings.OLLAMA_BASE_URL
         self.temperature = (
             temperature if temperature is not None else settings.LLM_TEMPERATURE
         )
 
-        if not self.api_key:
-            raise RAGError("OPENAI_API_KEY is required to run the RAG pipeline.")
-
-        self._llm = ChatOpenAI(
+        self._llm = llm or ChatOllama(
             model=self.model,
+            base_url=self.base_url,
             temperature=self.temperature,
-            api_key=self.api_key,
         )
         self._prompt = build_rag_prompt()
         self._followup_prompt = build_followup_rewrite_prompt()
@@ -153,7 +151,12 @@ class RAGChain:
             )
             response = self._llm.invoke(messages)
         except Exception as exc:
-            raise RAGError(f"Failed to rewrite follow-up query: {exc}") from exc
+            raise RAGError(
+                "Failed to rewrite follow-up query. "
+                f"Verificá que Ollama esté corriendo ({self.base_url}) "
+                f"y que el modelo '{self.model}' esté instalado "
+                f"(`ollama pull {self.model}`). Detalle: {exc}"
+            ) from exc
 
         content = response.content
         if isinstance(content, list):
@@ -168,7 +171,7 @@ class RAGChain:
         context: str,
         chat_history: Optional[List[Dict[str, str]]] = None,
     ) -> str:
-        """Invoca GPT con el prompt anclado al contexto y la memoria."""
+        """Invoca Ollama con el prompt anclado al contexto y la memoria."""
         try:
             messages: List[BaseMessage] = self._prompt.format_messages(
                 context=context,
@@ -177,7 +180,12 @@ class RAGChain:
             )
             response = self._llm.invoke(messages)
         except Exception as exc:
-            raise RAGError(f"Failed to generate RAG answer: {exc}") from exc
+            raise RAGError(
+                "Failed to generate RAG answer. "
+                f"Verificá que Ollama esté corriendo ({self.base_url}) "
+                f"y que el modelo '{self.model}' esté instalado "
+                f"(`ollama pull {self.model}`). Detalle: {exc}"
+            ) from exc
 
         content = response.content
         if isinstance(content, list):

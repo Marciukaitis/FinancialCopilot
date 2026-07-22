@@ -1,8 +1,10 @@
 """Servicio de indexación: carga, chunking, embeddings y persistencia en ChromaDB."""
 
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import List, Optional
 
+from backend.app.config.settings import settings
 from backend.app.core.exceptions import EmbeddingError, PDFLoadError, VectorStoreError
 from backend.app.rag.ingestion.pdf_loader import PDFDocumentLoader
 from backend.app.rag.ingestion.text_splitter import DocumentChunker
@@ -22,6 +24,11 @@ class IndexStatus:
     documents_count: int
     chunks_indexed: int
     collection_name: str
+    documents: List[str] = field(default_factory=list)
+    embedding_model: str = ""
+    llm_model: str = ""
+    vector_db: str = "ChromaDB"
+    indexed: bool = False
 
 
 class IndexingService:
@@ -45,13 +52,11 @@ class IndexingService:
 
     def get_status(self) -> IndexStatus:
         """Estado de documentos en disco e indexados en ChromaDB."""
-        from pathlib import Path
-
-        from backend.app.config.settings import settings
-
         docs_dir = Path(settings.DOCUMENTS_DIRECTORY)
-        documents_count = (
-            len(list(docs_dir.glob("*.pdf"))) if docs_dir.exists() else 0
+        documents = (
+            sorted(path.name for path in docs_dir.glob("*.pdf"))
+            if docs_dir.exists()
+            else []
         )
 
         chunks_indexed = 0
@@ -63,9 +68,14 @@ class IndexingService:
             chunks_indexed = 0
 
         return IndexStatus(
-            documents_count=documents_count,
+            documents_count=len(documents),
+            documents=documents,
             chunks_indexed=chunks_indexed,
             collection_name=collection_name,
+            embedding_model=settings.EMBEDDING_MODEL,
+            llm_model=settings.OLLAMA_MODEL,
+            vector_db="ChromaDB",
+            indexed=len(documents) > 0 and chunks_indexed > 0,
         )
 
     def reindex_all(self) -> IndexingResult:

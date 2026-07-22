@@ -11,10 +11,11 @@ Permite subir documentos PDF, indexarlos automáticamente y responder preguntas 
 | Capa | Tecnología |
 |------|------------|
 | Backend | Python, FastAPI |
-| IA | LangChain, LangGraph, OpenAI |
+| Orquestación | LangChain, LangGraph |
+| Embeddings | HuggingFace / Sentence Transformers |
+| LLM | Ollama (Llama 3.2) — 100% local |
 | Vector DB | ChromaDB |
-| Embeddings | OpenAI Embeddings |
-| Frontend | React (Vite) |
+| Frontend | React + Material UI |
 
 ---
 
@@ -46,7 +47,8 @@ Finance Copilot/
 
 - Python 3.11+
 - Node.js 18+
-- Cuenta de OpenAI con API key
+- [Ollama](https://ollama.com) instalado
+- Modelo local: `ollama pull llama3.2`
 
 ---
 
@@ -60,7 +62,19 @@ Finance Copilot/
    cp .env.example .env
    ```
 
-3. Completar `OPENAI_API_KEY` en el archivo `.env`.
+3. Instalar y preparar Ollama:
+
+   ```bash
+   ollama pull llama3.2
+   ollama serve
+   ```
+
+4. Si migrás desde OpenAI, borrá el índice viejo y reindexá:
+
+   ```bash
+   rm -rf data/chroma/*
+   curl -X POST http://localhost:8000/reindex
+   ```
 
 ---
 
@@ -95,8 +109,8 @@ npm run dev
 
 La aplicación estará disponible en http://localhost:5173
 
-
 ---
+
 
 ## Licencia
 

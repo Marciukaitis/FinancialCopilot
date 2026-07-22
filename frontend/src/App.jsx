@@ -58,6 +58,7 @@ function App() {
               error={documents.error}
               lastUploaded={documents.lastUploaded}
               onUpload={documents.upload}
+              onSelectQuestion={chat.sendMessage}
             />
           </Grid>
 

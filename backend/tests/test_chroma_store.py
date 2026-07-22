@@ -1,12 +1,10 @@
-"""Tests de ChromaStore e IndexingService (sin OpenAI ni disco real de producción)."""
+"""Tests de ChromaStore e IndexingService (embeddings locales mockeados)."""
 
 from typing import List
 from unittest.mock import MagicMock, patch
 
-import pytest
 from langchain_core.documents import Document
 
-from backend.app.core.exceptions import VectorStoreError
 from backend.app.rag.vectorstore.chroma_store import ChromaStore
 from backend.app.services.indexing_service import IndexingService
 
@@ -19,7 +17,7 @@ def _docs() -> List[Document]:
 
 
 @patch("backend.app.rag.vectorstore.chroma_store.Chroma")
-@patch("backend.app.rag.vectorstore.chroma_store.OpenAIEmbeddings")
+@patch("backend.app.rag.vectorstore.chroma_store.build_embeddings")
 def test_add_documents_stores_embeddings(
     mock_embeddings: MagicMock,
     mock_chroma: MagicMock,
@@ -32,7 +30,6 @@ def test_add_documents_stores_embeddings(
     store = ChromaStore(
         persist_directory=str(tmp_path / "chroma"),
         collection_name="finance_documents",
-        api_key="test-key",
     )
     ids = store.add_documents(_docs())
 
@@ -42,7 +39,7 @@ def test_add_documents_stores_embeddings(
 
 
 @patch("backend.app.rag.vectorstore.chroma_store.Chroma")
-@patch("backend.app.rag.vectorstore.chroma_store.OpenAIEmbeddings")
+@patch("backend.app.rag.vectorstore.chroma_store.build_embeddings")
 def test_reset_collection(
     mock_embeddings: MagicMock,
     mock_chroma: MagicMock,
@@ -51,23 +48,11 @@ def test_reset_collection(
     vectorstore = MagicMock()
     mock_chroma.return_value = vectorstore
 
-    store = ChromaStore(
-        persist_directory=str(tmp_path / "chroma"),
-        api_key="test-key",
-    )
+    store = ChromaStore(persist_directory=str(tmp_path / "chroma"))
     store.reset_collection()
 
     vectorstore.delete_collection.assert_called_once()
     assert mock_chroma.call_count == 2
-
-
-def test_chroma_requires_api_key(tmp_path) -> None:
-    with pytest.raises(VectorStoreError, match="OPENAI_API_KEY"):
-        ChromaStore(
-            persist_directory=str(tmp_path / "chroma"),
-            api_key="",
-            embeddings=None,
-        )
 
 
 def test_reindex_all_pipeline() -> None:

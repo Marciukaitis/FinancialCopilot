@@ -35,13 +35,13 @@ def _chunks() -> List[RetrievedChunk]:
     ]
 
 
-@patch("backend.app.rag.chains.rag_chain.ChatOpenAI")
+@patch("backend.app.rag.chains.rag_chain.ChatOllama")
 def test_generate_includes_chat_history(mock_chat: MagicMock) -> None:
     llm = MagicMock()
     llm.invoke.return_value = MagicMock(content="El plazo es 36 meses.")
     mock_chat.return_value = llm
 
-    chain = RAGChain(api_key="test-key")
+    chain = RAGChain(model="llama3.2")
     chain.generate(
         question="¿Y cuál es el plazo?",
         context="[Documento: credito.pdf | Página: 5]\nEl plazo máximo es 36 meses.",
