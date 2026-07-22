@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173"
 
     OPENAI_API_KEY: str = ""
+    EMBEDDING_MODEL: str = "text-embedding-3-small"
 
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
     DOCUMENTS_DIRECTORY: str = "./data/documents"
