@@ -33,5 +33,5 @@ class QueryService:
         return self.retriever.retrieve_with_scores(query)
 
     def ask(self, query: str) -> RAGResult:
-        """Ejecuta el pipeline completo: Retriever → Contexto → Prompt → GPT."""
+        """Ejecuta el StateGraph: Analizar → Buscar → Generar → Validar."""
         return self.rag_graph.invoke(query)

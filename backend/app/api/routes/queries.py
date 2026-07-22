@@ -2,7 +2,12 @@
 
 from fastapi import APIRouter, HTTPException
 
-from backend.app.core.exceptions import RAGError, RetrievalError
+from backend.app.core.exceptions import (
+    EmbeddingError,
+    RAGError,
+    RetrievalError,
+    VectorStoreError,
+)
 from backend.app.models.schemas import (
     QueryRequest,
     QueryResponse,
@@ -16,13 +21,20 @@ from backend.app.services.query_service import QueryService
 router = APIRouter(tags=["queries"])
 query_service = QueryService()
 
+PIPELINE_ERRORS = (
+    RetrievalError,
+    RAGError,
+    VectorStoreError,
+    EmbeddingError,
+)
+
 
 @router.post("/retrieve", response_model=RetrieveResponse)
 async def retrieve_documents(payload: RetrieveRequest) -> RetrieveResponse:
     """Búsqueda semántica en ChromaDB sin generación con LLM."""
     try:
         results = query_service.retrieve(payload.query)
-    except RetrievalError as exc:
+    except PIPELINE_ERRORS as exc:
         raise HTTPException(status_code=400, detail=exc.message) from exc
 
     return RetrieveResponse(
@@ -44,13 +56,13 @@ async def retrieve_documents(payload: RetrieveRequest) -> RetrieveResponse:
 @router.post("/query", response_model=QueryResponse)
 async def query_documents(payload: QueryRequest) -> QueryResponse:
     """
-    Pipeline RAG completo:
+    Pipeline RAG con LangGraph:
 
-    Usuario → Retriever → Contexto → Prompt → GPT → Respuesta
+    Usuario → Analizar → Buscar → Generar → Validar → Usuario
     """
     try:
         result = query_service.ask(payload.query)
-    except (RetrievalError, RAGError) as exc:
+    except PIPELINE_ERRORS as exc:
         raise HTTPException(status_code=400, detail=exc.message) from exc
 
     return QueryResponse(
@@ -58,4 +70,8 @@ async def query_documents(payload: QueryRequest) -> QueryResponse:
         answer=result.answer,
         sources=[SourceResponse(**source) for source in result.sources],
         chunks_used=result.chunks_used,
+        cleaned_query=result.cleaned_query,
+        is_valid=result.is_valid,
+        validation_notes=result.validation_notes,
+        analysis=result.analysis,
     )

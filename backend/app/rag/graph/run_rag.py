@@ -1,5 +1,5 @@
 """
-Script de verificación del pipeline RAG.
+Script de verificación del pipeline RAG (LangGraph).
 
 Uso (desde la raíz, con OPENAI_API_KEY y documentos indexados):
     python -m backend.app.rag.graph.run_rag "¿cuál es el margen operativo?"
@@ -22,13 +22,22 @@ def main() -> None:
     result = RAGGraph().invoke(query)
 
     print("\n" + "=" * 60)
+    print("Flujo: Analizar → Buscar → Generar → Validar")
+    print("-" * 60)
     print(f"Pregunta: {result.query}")
+    print(f"Query limpia: {result.cleaned_query}")
+    print(f"Intent: {result.analysis.get('intent')}")
     print(f"Chunks usados: {result.chunks_used}")
+    print(f"Validación OK: {result.is_valid}")
+    if result.validation_notes:
+        print("Notas de validación:")
+        for note in result.validation_notes:
+            print(f"  - {note}")
     print("-" * 60)
     print("Respuesta:")
     print(result.answer)
     print("-" * 60)
-    print("Fuentes estructuradas:")
+    print("Fuentes:")
     if not result.sources:
         print("  (sin fuentes recuperadas)")
     for source in result.sources:

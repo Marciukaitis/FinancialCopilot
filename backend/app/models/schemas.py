@@ -60,3 +60,7 @@ class QueryResponse(BaseModel):
     answer: str
     sources: List[SourceResponse]
     chunks_used: int
+    cleaned_query: Optional[str] = None
+    is_valid: bool = True
+    validation_notes: List[str] = []
+    analysis: Dict[str, Any] = {}

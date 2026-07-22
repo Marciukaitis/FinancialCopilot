@@ -1,37 +1,26 @@
-"""Grafo LangGraph del pipeline RAG."""
+"""Grafo LangGraph del pipeline RAG con StateGraph."""
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Optional
 
 from langgraph.graph import END, StateGraph
 
 from backend.app.core.exceptions import RAGError, RetrievalError
 from backend.app.rag.chains.rag_chain import RAGChain
-from backend.app.rag.retriever.document_retriever import DocumentRetriever, RetrievedChunk
-
-
-class RAGState(TypedDict, total=False):
-    query: str
-    chunks: List[RetrievedChunk]
-    context: str
-    answer: str
-    sources: List[Dict[str, Any]]
-
-
-@dataclass
-class RAGResult:
-    query: str
-    answer: str
-    context: str
-    sources: List[Dict[str, Any]] = field(default_factory=list)
-    chunks_used: int = 0
+from backend.app.rag.graph.nodes import RAGNodes
+from backend.app.rag.graph.state import RAGResult, RAGState
+from backend.app.rag.retriever.document_retriever import DocumentRetriever
 
 
 class RAGGraph:
     """
-    Orquesta el flujo:
+    Flujo LangGraph:
 
-    Usuario → Retriever → Contexto → Prompt → GPT → Respuesta
+    Usuario
+      → analyze_question
+      → search_documents
+      → generate_answer
+      → validate_answer
+      → Usuario
     """
 
     def __init__(
@@ -41,41 +30,24 @@ class RAGGraph:
     ) -> None:
         self.retriever = retriever or DocumentRetriever()
         self.chain = chain or RAGChain()
+        self.nodes = RAGNodes(retriever=self.retriever, chain=self.chain)
         self._graph = self._build_graph()
 
     def _build_graph(self):
         graph = StateGraph(RAGState)
-        graph.add_node("retrieve", self._retrieve_node)
-        graph.add_node("build_context", self._build_context_node)
-        graph.add_node("generate", self._generate_node)
 
-        graph.set_entry_point("retrieve")
-        graph.add_edge("retrieve", "build_context")
-        graph.add_edge("build_context", "generate")
-        graph.add_edge("generate", END)
+        graph.add_node("analyze_question", self.nodes.analyze_question)
+        graph.add_node("search_documents", self.nodes.search_documents)
+        graph.add_node("generate_answer", self.nodes.generate_answer)
+        graph.add_node("validate_answer", self.nodes.validate_answer)
+
+        graph.set_entry_point("analyze_question")
+        graph.add_edge("analyze_question", "search_documents")
+        graph.add_edge("search_documents", "generate_answer")
+        graph.add_edge("generate_answer", "validate_answer")
+        graph.add_edge("validate_answer", END)
 
         return graph.compile()
-
-    def _retrieve_node(self, state: RAGState) -> RAGState:
-        chunks = self.retriever.retrieve_with_scores(state["query"])
-        return {"chunks": chunks}
-
-    def _build_context_node(self, state: RAGState) -> RAGState:
-        chunks = state.get("chunks") or []
-        context = self.chain.build_context(chunks)
-        sources = self.chain.extract_sources(chunks)
-        return {"context": context, "sources": sources}
-
-    def _generate_node(self, state: RAGState) -> RAGState:
-        raw_answer = self.chain.generate(
-            question=state["query"],
-            context=state.get("context") or "",
-        )
-        answer = self.chain.attach_sources(
-            answer=raw_answer,
-            sources=state.get("sources") or [],
-        )
-        return {"answer": answer}
 
     def invoke(self, query: str) -> RAGResult:
         query = (query or "").strip()
@@ -98,4 +70,8 @@ class RAGGraph:
             context=final_state.get("context") or "",
             sources=final_state.get("sources") or [],
             chunks_used=len(chunks),
+            cleaned_query=final_state.get("cleaned_query") or query,
+            analysis=final_state.get("analysis") or {},
+            is_valid=bool(final_state.get("is_valid", True)),
+            validation_notes=final_state.get("validation_notes") or [],
         )
